@@ -1,0 +1,147 @@
+# Dockerfile hoàn chỉnh cho Python 3.10.11 + pip + pycdc + curl
+
+FROM ubuntu:22.04
+
+
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+USER root
+
+
+
+# Cài các gói hệ thống cần thiết (curl, build tools, libs cho Python)
+
+RUN apt-get update && apt-get install -y \
+
+    wget \
+
+    curl \
+
+    build-essential \
+
+    libssl-dev \
+
+    zlib1g-dev \
+
+    libncurses5-dev \
+
+    libncursesw5-dev \
+
+    libreadline-dev \
+
+    libsqlite3-dev \
+
+    libgdbm-dev \
+
+    libdb5.3-dev \
+
+    libbz2-dev \
+
+    libexpat1-dev \
+
+    liblzma-dev \
+
+    tk-dev \
+
+    libffi-dev \
+
+    git \
+
+    cmake \
+
+    g++ \
+
+    && rm -rf /var/lib/apt/lists/*
+
+
+
+# Tải và cài Python 3.10.11 từ mã nguồn
+
+WORKDIR /tmp
+
+RUN wget https://www.python.org/ftp/python/3.10.11/Python-3.10.11.tgz \
+
+    && tar -xzf Python-3.10.11.tgz \
+
+    && cd Python-3.10.11 \
+
+    && ./configure --enable-optimizations \
+
+    && make -j $(nproc) \
+
+    && make altinstall \
+
+    && cd .. \
+
+    && rm -rf Python-3.10.11.tgz Python-3.10.11
+
+
+
+# Tạo symlink python3 trỏ đến python3.10
+
+RUN ln -s /usr/local/bin/python3.10 /usr/local/bin/python3
+
+
+
+# Cài pip cho Python 3.10.11 (ensurepip + nâng cấp)
+
+RUN /usr/local/bin/python3.10 -m ensurepip --upgrade \
+
+    && /usr/local/bin/python3.10 -m pip install --upgrade pip
+
+
+
+# Tạo symlink pip trỏ đúng vào pip của Python 3.10.11
+
+RUN ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip
+
+
+
+# Clone và build pycdc (decompiler Python bytecode)
+
+RUN git clone https://github.com/zrax/pycdc.git /tmp/pycdc \
+
+    && cd /tmp/pycdc \
+
+    && cmake . \
+
+    && make \
+
+    && cp pycdc /usr/local/bin/ \
+
+    && cp pycdas /usr/local/bin/ \
+
+    && cd / \
+
+    && rm -rf /tmp/pycdc
+
+
+
+# Tạo thư mục làm việc /app
+
+WORKDIR /app
+
+
+
+# Copy file start.txt từ thư mục chứa Dockerfile vào /app
+
+COPY start.txt .
+
+
+
+# Thiết lập quyền đọc cho file (không bắt buộc)
+
+RUN chmod 644 start.txt
+
+
+
+# Tạo symlink /tmp/kon trỏ đến /app
+
+RUN ln -s /app /tmp/kon
+
+
+
+# Lệnh mặc định khi chạy container: mở bash
+
+CMD ["/bin/bash"]
